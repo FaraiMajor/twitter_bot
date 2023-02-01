@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">Farai's Bot</h1>
+  <h1 align="center">Farai's Twitter bot</h1>
   <p align="center">A Python twitter bot that uses chatGPT to generate random tweets.<p>
   <p align="center">
       <a href="https://github.com/FaraiMajor/twitter_bot/blob/main/LICENSE"/>
