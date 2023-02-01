@@ -1,6 +1,0 @@
-openai_org = "org-J8QDAq2ZC70XEv4hVFOXZ8pc"
-openai_apikey = "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"
-twitter_apikey = "akqdYquOaXmZzCks7agseYwlW"
-twitter_apikey_secret = "87tSkNpL22CdkvjdNe8HkSFrHBU72T1EuQerMKk9PAFPbKGq5P"
-twitter_access_token = "1157381882159489026-HRc2G48Z67gpCiVjFiCuwDPu7h6rSq"
-twitter_access_token_secret = "MmaqTeeKRbQOP9mMtic4rYWxh1NYxgBQVdVzmMjFjLotP"
