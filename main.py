@@ -3,18 +3,22 @@ import random
 import config
 import tweepy
 import pandas
-import json
-import sys
 import geocoder
 import schedule
 
+# Twitter details
+consumer_key = config.twitter_apikey
+consumer_secret = config.twitter_apikey_secret
+access_token = config.twitter_access_token
+access_token_secret = config.twitter_access_token_secret
+
+# OPENAI keys
+openai.organization = config.openai_org
+openai.api_key = config.openai_apikey
+openai.Model.list()
+
 
 def job():
-    # Twitter details
-    consumer_key = config.twitter_apikey
-    consumer_secret = config.twitter_apikey_secret
-    access_token = config.twitter_access_token
-    access_token_secret = config.twitter_access_token_secret
 
     # authentication of consumer key and secret
     auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
@@ -38,67 +42,56 @@ def job():
 
     # extract our hashtags
 
-    def extract_hashtags(trends):
+    def extract_trending_topics(trends):
         hashtags = [trend["name"] for trend in trends]
         return hashtags
 
-    hashtags = extract_hashtags(trends)
+    trending = extract_trending_topics(trends)
 
-    # OPENAI keys
-    openai.organization = config.openai_org
-    openai.api_key = config.openai_apikey
-    openai.Model.list()
+    def generate_tweet(trending):
+        # create a completion
+        prompt = 'write a tweet about ' + random.choice(hashtags)
+        completion = openai.Completion.create(
+            model='text-davinci-003', prompt=prompt, max_tokens=186)
 
-    # create a completion
-    prompt = 'write a tweet about ' + random.choice(hashtags)
+        api.update_status(completion.choices[0].text)
 
-    completion = openai.Completion.create(
-        model='text-davinci-003', prompt=prompt, max_tokens=186)
-
-    # print the completion
-    # print(completion.choices[0].text)
-
+    # Auto like and retweet function
+    def like_and_retweet():
+        usernames = ['Cobratate', 'larryelder',
+                     'elonmusk', 'KSI', 'jordanbpeterson']
+        # Loop through each user in the list
+        for username in usernames:
+            # Get the latest tweets from the user
+            public_tweets = api.user_timeline(screen_name=username, count=10)
+            for tweet in public_tweets:
+                # get status and check if tweet has been liked already
+                status = api.get_status(tweet.id)
+                liked = status.favorited
+                if not liked:
+                    api.create_favorite(tweet.id)
+                    api.retweet(tweet.id)
+                else:
+                    continue
     try:
         api.verify_credentials()
         print("Authentication Successful")
-        api.update_status(completion.choices[0].text)
+        generate_tweet(trending)
+        like_and_retweet()
     except:
         print("Authentication Error")
 
     # scraps trending topics from twitter using tweepy
     dataset = {
-        "hashtags": hashtags
+        "hashtags": trending
     }
 
     df = pandas.DataFrame(dataset)
     df.to_csv('tweets.csv')
-    '''
-    We want to use thos portion to find all the location trends for twitter. save this in a json
-    and now we have our woied number for each location
-    '''
-    # available_loc = api.available_trends()
-    # # writing a JSON file that has the available trends around the world
-    # with open("available_locs_for_trend.json", "w") as wp:
-    #     wp.write(json.dumps(available_loc, indent=1))
-
-    #     # Trends for Specific Country
-    # loc = sys.argv[1]     # location as argument variable
-    # # getting object that has location's latitude and longitude
-    # g = geocoder.osm(loc)
-
-    # closest_loc = api.closest_trends(g.lat, g.lng)
-    # trends = api.get_place_trends(closest_loc[0]['woeid'])
-    # # writing a JSON file that has the latest trends for that location
-    # with open("twitter_{}_trend.json".format(loc), "w") as wp:
-    #     wp.write(json.dumps(trends, indent=1))
-
-    '''
-    --------------------location finder ends here-------------------
-    '''
 
 
 # run the function job() every 1 hr seconds
-schedule.every().hour.do(job)
+schedule.every(60).seconds.do(job)
 
 while True:
     schedule.run_pending()
