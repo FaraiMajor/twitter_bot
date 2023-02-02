@@ -6,6 +6,8 @@ import pandas
 import geocoder
 import schedule
 
+
+FILE_NAME = 'last_seen.txt'
 # Twitter details
 consumer_key = config.twitter_apikey
 consumer_secret = config.twitter_apikey_secret
@@ -48,9 +50,10 @@ def job():
 
     trending = extract_trending_topics(trends)
 
+    # GENERATE TWEETS USING openAI
     def generate_tweet(trending):
         # create a completion
-        prompt = 'write a tweet about ' + random.choice(hashtags)
+        prompt = 'write a tweet about ' + random.choice(trending)
         completion = openai.Completion.create(
             model='text-davinci-003', prompt=prompt, max_tokens=186)
 
@@ -73,11 +76,45 @@ def job():
                     api.retweet(tweet.id)
                 else:
                     continue
+
+    '''
+    store and write to a file the last id of our mentioned tweet and avoid repetition
+    This part will reply to our mentions starting search from where we previously
+    left off
+    '''
+    def read_last_seen(FILE_NAME):
+        with open(FILE_NAME, 'r') as read_file:
+            last_seen_id = int(read_file.read().strip())
+            read_file.close()
+        return last_seen_id
+
+    def store_last_seen(FILE_NAME, last_seen_id):
+        with open(FILE_NAME, 'w') as write_file:
+            write_file.write(str(last_seen_id))
+            write_file.close()
+        return
+
+    # function to reply to tweets we are mentioned in
+    def reply_to_mentions():
+        tweets = api.mentions_timeline(
+            since_id=read_last_seen(FILE_NAME), tweet_mode='extended')
+        # reversed tweets because bot read the most recent tweet down but we want the most recent last to get ID
+        for tweet in reversed(tweets):
+            print(str(tweet.id) + '  - ' + tweet.full_text)
+            prompt = "reply to this tweet: " + tweet.full_text
+            completion = openai.Completion.create(
+                model='text-davinci-003', prompt=prompt, max_tokens=170)
+            reply = '@' + tweet.user.screen_name + completion.choices[0].text
+            api.update_status(reply, in_reply_to_status_id=tweet.id)
+            store_last_seen(FILE_NAME, tweet.id)
+
     try:
         api.verify_credentials()
         print("Authentication Successful")
         generate_tweet(trending)
+        reply_to_mentions()
         like_and_retweet()
+
     except:
         print("Authentication Error")
 
@@ -91,7 +128,7 @@ def job():
 
 
 # run the function job() every 1 hr seconds
-schedule.every(60).seconds.do(job)
+schedule.every(5).seconds.do(job)
 
 while True:
     schedule.run_pending()
