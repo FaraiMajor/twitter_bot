@@ -122,9 +122,26 @@ def reply_to_mentions():
         prompt = "reply to this tweet with strictly 240 characters or less only: " + tweet.full_text
         completion = openai.Completion.create(
             model='text-davinci-003', prompt=prompt, max_tokens=160)
+        # Reply to the mention
         reply = '@' + tweet.user.screen_name + completion.choices[0].text
-        api.update_status(reply, in_reply_to_status_id=tweet.id)
+        api.update_status(status=reply, in_reply_to_status_id=tweet.id)
         store_last_seen(FILE_NAME, tweet.id)
+
+
+def create_engagement():
+
+    for _ in range(10):
+        # Choose a random hashtag from the list of hashtags
+        hashtag = random.choice(trending)
+        # Search for tweets containing the hashtag with a count of 100
+        tweets = api.search_tweets(q=hashtag, count=25)
+        tweet = random.choice(list(tweets))
+        # Follow the user who posted the tweet
+        api.create_friendship(user_id=tweet.user.id)
+        # Like the tweet
+        api.create_favorite(tweet.id)
+        # Retweet the tweet
+        api.retweet(tweet.id)
 
 
 try:
@@ -136,7 +153,8 @@ except:
 
 while True:
     reply_to_mentions()
+    create_engagement()
     like_and_retweet()
     generate_tweet(trending)
     print('tweet done')
-    time.sleep(15)
+    time.sleep(900)
